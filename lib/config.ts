@@ -1,0 +1,5 @@
+// Environment variables
+export const config = {
+  apiUrl: process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080",
+  jwtSecret: process.env.JWT_SECRET_KEY || "your-secret-key",
+}
