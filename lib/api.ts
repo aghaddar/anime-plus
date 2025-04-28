@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/anime/animepahe"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"
+const API_PATH = "/anime/animepahe"
 
 export interface AnimeResult {
   id: string
@@ -31,7 +32,7 @@ export interface AnimeSource {
 // Search for anime
 export async function searchAnime(query: string): Promise<AnimeResult[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/${encodeURIComponent(query)}`)
+    const response = await fetch(`${API_BASE_URL}${API_PATH}/${encodeURIComponent(query)}`)
     if (!response.ok) {
       console.error(`Failed to search anime for query ${query}: ${response.statusText}`)
       return getFallbackAnimeData()
@@ -59,7 +60,7 @@ export async function searchAnime(query: string): Promise<AnimeResult[]> {
 // Get anime info
 export async function getAnimeInfo(id: string): Promise<AnimeResult | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/info/${encodeURIComponent(id)}`)
+    const response = await fetch(`${API_BASE_URL}${API_PATH}/info/${encodeURIComponent(id)}`)
     if (!response.ok) {
       console.error(`Failed to get anime info for ID ${id}: ${response.statusText}`)
       return getFallbackAnimeDetail(id)
@@ -106,7 +107,7 @@ export async function getAnimeInfo(id: string): Promise<AnimeResult | null> {
 // Get episode sources
 export async function getEpisodeSources(episodeId: string): Promise<AnimeSource | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/watch?episodeId=${encodeURIComponent(episodeId)}`)
+    const response = await fetch(`${API_BASE_URL}${API_PATH}/watch?episodeId=${encodeURIComponent(episodeId)}`)
     if (!response.ok) {
       console.error(`Failed to get episode sources for ID ${episodeId}: ${response.statusText}`)
       return { sources: [] }
@@ -135,7 +136,7 @@ export async function getRecentEpisodes(): Promise<AnimeResult[]> {
 
     for (const query of popularQueries) {
       try {
-        const response = await fetch(`${API_BASE_URL}/${encodeURIComponent(query)}`)
+        const response = await fetch(`${API_BASE_URL}${API_PATH}/${encodeURIComponent(query)}`)
         if (response.ok) {
           const data = await response.json()
           if (data.results && data.results.length > 0) {
@@ -286,7 +287,7 @@ export async function getPopularAnime(): Promise<AnimeResult[]> {
     // Get first result from each popular query
     for (const query of popularQueries) {
       try {
-        const response = await fetch(`${API_BASE_URL}/${encodeURIComponent(query)}`)
+        const response = await fetch(`${API_BASE_URL}${API_PATH}/${encodeURIComponent(query)}`)
         if (response.ok) {
           const data = await response.json()
           if (data.results && data.results.length > 0) {
@@ -327,7 +328,7 @@ export async function getRelatedAnime(genres: string[]): Promise<AnimeResult[]> 
   try {
     // Use the first genre to find related anime
     const genre = genres[0]
-    const response = await fetch(`${API_BASE_URL}/${encodeURIComponent(genre)}`)
+    const response = await fetch(`${API_BASE_URL}${API_PATH}/${encodeURIComponent(genre)}`)
 
     if (!response.ok) {
       return getFallbackAnimeData().slice(0, 6)
