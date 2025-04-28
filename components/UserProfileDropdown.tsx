@@ -3,7 +3,7 @@
 import { useRef, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { User, ListPlus, History, Download, LogOut } from "lucide-react"
+import { User, ListPlus, History, LogOut } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
 interface UserProfileDropdownProps {
@@ -50,7 +50,7 @@ const UserProfileDropdown = ({ isOpen, onClose, userName, profileImage }: UserPr
       <div className="flex flex-col items-center py-6">
         <div className="w-16 h-16 rounded-full overflow-hidden mb-3">
           <Image
-            src={profileImage || "/placeholder.svg?height=100&width=100&query=anime profile"}
+            src={profileImage || "/zoro-profile.png"}
             alt={userName}
             width={64}
             height={64}
@@ -92,15 +92,6 @@ const UserProfileDropdown = ({ isOpen, onClose, userName, profileImage }: UserPr
           <span>Watch History</span>
         </Link>
 
-        <Link
-          href="/downloads"
-          className="flex items-center px-4 py-3 hover:bg-gray-800 transition-colors text-white"
-          onClick={onClose}
-        >
-          <Download size={20} className="mr-3" />
-          <span>Downloads</span>
-        </Link>
-
         <div className="border-t border-gray-700 my-1"></div>
 
         <button
@@ -108,7 +99,7 @@ const UserProfileDropdown = ({ isOpen, onClose, userName, profileImage }: UserPr
           onClick={handleLogout}
         >
           <LogOut size={20} className="mr-3" />
-          <span>Log out</span>
+          <span>log out</span>
         </button>
       </div>
     </div>

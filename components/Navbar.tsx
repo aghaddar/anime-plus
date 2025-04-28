@@ -102,14 +102,14 @@ const Navbar = () => {
             {/* User Profile */}
             {!isLoading && (
               <>
-                {isAuthenticated && user ? (
+                {user ? (
                   <div className="relative">
                     <button
                       onClick={toggleProfile}
                       className="flex items-center justify-center w-8 h-8 rounded-full overflow-hidden border-2 border-purple-500"
                     >
                       <Image
-                        src={user.avatar || "/zoro-profile.png"}
+                        src={user.avatarURL || "/zoro-profile.png"}
                         alt={user.username}
                         width={32}
                         height={32}
@@ -120,7 +120,7 @@ const Navbar = () => {
                       isOpen={isProfileOpen}
                       onClose={() => setIsProfileOpen(false)}
                       userName={user.username}
-                      profileImage={user.avatar}
+                      profileImage={user.avatarURL}
                     />
                   </div>
                 ) : (
@@ -182,7 +182,7 @@ const Navbar = () => {
                 >
                   Popular
                 </Link>
-                {!isAuthenticated && (
+                {!user && (
                   <Link href="/login" className="flex items-center px-3 py-2 rounded-md text-white hover:bg-gray-800">
                     <User className="w-5 h-5 mr-2" />
                     <span>Login</span>

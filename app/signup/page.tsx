@@ -22,8 +22,14 @@ export default function SignupPage() {
     e.preventDefault()
     setError("")
 
+    // Basic validation
     if (password !== confirmPassword) {
       setError("Passwords do not match")
+      return
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long")
       return
     }
 
@@ -32,13 +38,24 @@ export default function SignupPage() {
     try {
       const success = await register({ username, email, password })
       if (success) {
+        console.log("Registration successful, redirecting...")
         router.push("/")
       } else {
-        setError("Registration failed")
+        setError("Registration failed. Please try different credentials.")
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred during registration")
-      console.error(err)
+      console.error("Registration error:", err)
+
+      // Provide more helpful error messages based on common issues
+      if (err.message?.includes("already exists") || err.message?.includes("already in use") || err.message?.includes("already registered")) {
+        setError("This email is already registered. Please try logging in instead.")
+      } else if (err.message?.includes("password")) {
+        setError("Password doesn't meet requirements. Try a stronger password with at least 6 characters.")
+      } else if (err.message?.includes("email") || err.message?.includes("Email")) {
+        setError("Please provide a valid email address.")
+      } else {
+        setError(err.message || "Registration failed. Please try again.")
+      }
     } finally {
       setIsLoading(false)
     }

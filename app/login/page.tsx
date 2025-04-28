@@ -24,6 +24,7 @@ export default function LoginPage() {
     try {
       const success = await login({ email, password })
       if (success) {
+        console.log("Login successful, redirecting...")
         router.push("/")
       } else {
         setError("Invalid email or password")
