@@ -236,7 +236,13 @@ export default function AnimePage({ params }: AnimePageProps) {
 
       {/* Related Anime Section */}
       <div className="container mx-auto px-4 sm:px-6 pb-8 sm:pb-12">
-        <AnimeList title="You May Also Like" animeList={relatedAnime} />
+        <AnimeList
+          title="You May Also Like"
+          animeList={relatedAnime.map((anime) => ({
+            ...anime,
+            releaseDate: anime.releaseDate?.toString(),
+          }))}
+        />
       </div>
     </div>
   )

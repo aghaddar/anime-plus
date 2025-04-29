@@ -38,8 +38,12 @@ const FEATURED_ANIME = [
 
 async function getAnimeData() {
   try {
+    console.log("Fetching anime data for home page...")
     const popularAnime = await getPopularAnime()
+    console.log(`Retrieved ${popularAnime.length} popular anime titles`)
+
     const recentEpisodes = await getRecentEpisodes()
+    console.log(`Retrieved ${recentEpisodes.length} recent episodes`)
 
     // For recommended, we'll just use the popular anime for demo purposes
     const recommendedAnime = [...popularAnime].sort(() => Math.random() - 0.5)
@@ -50,7 +54,7 @@ async function getAnimeData() {
       recommendedAnime,
     }
   } catch (error) {
-    console.error("Error fetching anime data:", error)
+    console.error("Error in getAnimeData:", error)
     // Return empty arrays as fallback
     return {
       popularAnime: [],
@@ -70,11 +74,25 @@ export default async function Home() {
       </Suspense>
 
       <Suspense fallback={<AnimeListSkeleton title="Most Popular" />}>
-        <AnimeList title="Most Popular" animeList={popularAnime} viewAllLink="/popular" />
+        <AnimeList
+          title="Most Popular"
+          animeList={popularAnime.map(anime => ({
+            ...anime,
+            releaseDate: anime.releaseDate?.toString(),
+          }))}
+          viewAllLink="/popular"
+        />
       </Suspense>
 
       <Suspense fallback={<AnimeListSkeleton title="Trending Anime" />}>
-        <AnimeList title="Trending Anime" animeList={recommendedAnime} viewAllLink="/trending" />
+        <AnimeList
+          title="Trending Anime"
+          animeList={recommendedAnime.map(anime => ({
+            ...anime,
+            releaseDate: typeof anime.releaseDate === "number" ? anime.releaseDate.toString() : anime.releaseDate,
+          }))}
+          viewAllLink="/trending"
+        />
       </Suspense>
     </div>
   )

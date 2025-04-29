@@ -10,7 +10,7 @@ interface ApiStatusIndicatorProps {
 }
 
 const ApiStatusIndicator = ({
-  apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL,
+  apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL,
   pollingInterval = 60000, // Default: check every minute
   disabled = false, // Disable by default in preview environments
 }: ApiStatusIndicatorProps) => {

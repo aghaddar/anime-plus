@@ -1,18 +1,23 @@
+// lib/api.ts
+import { MOCK_POPULAR_ANIME } from "./mock-data"
+
+// Define the base URL and provider path separately for clarity
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"
-const API_PATH = "/anime/animepahe"
+const PROVIDER_PATH = "anime/animepahe"
 
 export interface AnimeResult {
   id: string
   title: string
   image: string
+  releaseDate?: string | number
   type?: string
-  releaseDate?: string
   description?: string
-  genres?: string[]
   status?: string
   totalEpisodes?: number
+  genres?: string[]
   episodes?: Episode[]
   recommendations?: AnimeResult[]
+  rating?: number
 }
 
 export interface Episode {
@@ -22,332 +27,228 @@ export interface Episode {
 }
 
 export interface AnimeSource {
+  headers?: {
+    Referer?: string
+  }
   sources: {
     url: string
     isM3U8: boolean
     quality: string
+    isDub?: boolean
   }[]
+  download?: string
 }
 
-// Search for anime
-export async function searchAnime(query: string): Promise<AnimeResult[]> {
+// Helper function to safely fetch data with fallback
+async function safeFetch(url: string, fallbackData: any) {
   try {
-    const response = await fetch(`${API_BASE_URL}${API_PATH}/${encodeURIComponent(query)}`)
+    console.log(`Fetching from: ${url}`)
+
+    // Add a timeout to the fetch request
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+
+    // Fix the cache/revalidate conflict - use only one
+    const response = await fetch(url, {
+      signal: controller.signal,
+      next: { revalidate: 60 }, // Revalidate every minute
+    })
+
+    clearTimeout(timeoutId)
+
     if (!response.ok) {
-      console.error(`Failed to search anime for query ${query}: ${response.statusText}`)
-      return getFallbackAnimeData()
+      console.error(`API error: ${response.status} ${response.statusText} for ${url}`)
+      return fallbackData
     }
 
     const data = await response.json()
-    if (!data.results || !Array.isArray(data.results)) {
-      console.error("Invalid response format from API")
-      return getFallbackAnimeData()
-    }
-
-    return data.results.map((item: any) => ({
-      id: item.id,
-      title: item.title,
-      image: item.image || "/vibrant-cityscape.png",
-      releaseDate: item.releaseDate,
-      type: item.type,
-    }))
+    console.log(`API response for ${url} received successfully`)
+    return data
   } catch (error) {
-    console.error("Error searching anime:", error)
-    return getFallbackAnimeData()
+    console.error(`Fetch error for ${url}:`, error)
+    console.log(`Using fallback data instead`)
+    return fallbackData
   }
 }
 
-// Get anime info
-export async function getAnimeInfo(id: string): Promise<AnimeResult | null> {
-  try {
-    const response = await fetch(`${API_BASE_URL}${API_PATH}/info/${encodeURIComponent(id)}`)
-    if (!response.ok) {
-      console.error(`Failed to get anime info for ID ${id}: ${response.statusText}`)
-      return getFallbackAnimeDetail(id)
-    }
-
-    const data = await response.json()
-
-    // Process recommendations if available
-    let recommendations: AnimeResult[] = []
-    if (data.recommendations && Array.isArray(data.recommendations)) {
-      recommendations = data.recommendations.map((rec: any) => ({
-        id: rec.id,
-        title: rec.title,
-        image: rec.image || "/vibrant-cityscape.png",
-        type: rec.type,
-        releaseDate: rec.releaseDate,
-      }))
-    }
-
-    return {
-      id: data.id,
-      title: data.title,
-      image: data.image || "/vibrant-cityscape-night.png",
-      description: data.description || "No description available.",
-      genres: data.genres || [],
-      status: data.status,
-      type: data.type,
-      releaseDate: data.releaseDate,
-      totalEpisodes: data.totalEpisodes,
-      episodes:
-        data.episodes?.map((ep: any) => ({
-          id: ep.id,
-          number: ep.number,
-          title: ep.title,
-        })) || [],
-      recommendations,
-    }
-  } catch (error) {
-    console.error("Error getting anime info:", error)
-    return getFallbackAnimeDetail(id)
-  }
-}
-
-// Get episode sources
-export async function getEpisodeSources(episodeId: string): Promise<AnimeSource | null> {
-  try {
-    const response = await fetch(`${API_BASE_URL}${API_PATH}/watch?episodeId=${encodeURIComponent(episodeId)}`)
-    if (!response.ok) {
-      console.error(`Failed to get episode sources for ID ${episodeId}: ${response.statusText}`)
-      return { sources: [] }
-    }
-
-    const data = await response.json()
-    return {
-      sources:
-        data.sources?.map((source: any) => ({
-          url: source.url,
-          isM3U8: source.isM3U8,
-          quality: source.quality,
-        })) || [],
-    }
-  } catch (error) {
-    console.error("Error getting episode sources:", error)
-    return { sources: [] }
-  }
-}
-
-// Get recent episodes
-export async function getRecentEpisodes(): Promise<AnimeResult[]> {
-  try {
-    // Try multiple popular anime titles in case one fails
-    const popularQueries = ["demon slayer", "one piece", "jujutsu kaisen", "attack on titan", "my hero academia"]
-
-    for (const query of popularQueries) {
-      try {
-        const response = await fetch(`${API_BASE_URL}${API_PATH}/${encodeURIComponent(query)}`)
-        if (response.ok) {
-          const data = await response.json()
-          if (data.results && data.results.length > 0) {
-            return data.results.slice(0, 10).map((item: any) => ({
-              id: item.id,
-              title: item.title,
-              image: item.image || "/vibrant-cityscape.png",
-              releaseDate: item.releaseDate,
-              type: item.type,
-            }))
-          }
-        }
-      } catch (err) {
-        console.error(`Error searching for ${query}:`, err)
-        // Continue to the next query
-      }
-    }
-
-    // If all API calls fail, return fallback data
-    return getFallbackAnimeData()
-  } catch (error) {
-    console.error("Error getting recent episodes:", error)
-    // Return fallback data if the API is completely unavailable
-    return getFallbackAnimeData()
-  }
-}
-
-// Add a function to provide fallback data
-function getFallbackAnimeData(): AnimeResult[] {
-  return [
-    {
-      id: "demon-slayer",
-      title: "Demon Slayer: Kimetsu no Yaiba",
-      image: "/swords-against-shadows.png",
-      type: "TV",
-      releaseDate: "2019",
-    },
-    {
-      id: "one-piece",
-      title: "One Piece",
-      image: "/Straw-Hat-Crew-Adventure.png",
-      type: "TV",
-      releaseDate: "1999",
-    },
-    {
-      id: "jujutsu-kaisen",
-      title: "Jujutsu Kaisen",
-      image: "/cursed-energy-clash.png",
-      type: "TV",
-      releaseDate: "2020",
-    },
-    {
-      id: "attack-on-titan",
-      title: "Attack on Titan",
-      image: "/colossal-silhouette.png",
-      type: "TV",
-      releaseDate: "2013",
-    },
-    {
-      id: "my-hero-academia",
-      title: "My Hero Academia",
-      image: "/hero-academy-gathering.png",
-      type: "TV",
-      releaseDate: "2016",
-    },
-    {
-      id: "tokyo-revengers",
-      title: "Tokyo Revengers",
-      image: "/street-corner-gang.png",
-      type: "TV",
-      releaseDate: "2021",
-    },
-    {
-      id: "chainsaw-man",
-      title: "Chainsaw Man",
-      image: "/demonic-figure.png",
-      type: "TV",
-      releaseDate: "2022",
-    },
-    {
-      id: "spy-x-family",
-      title: "Spy x Family",
-      image: "/forger-family-outing.png",
-      type: "TV",
-      releaseDate: "2022",
-    },
-    {
-      id: "bleach",
-      title: "Bleach",
-      image: "/Soul-Reaper-in-Shadows.png",
-      type: "TV",
-      releaseDate: "2004",
-    },
-    {
-      id: "naruto",
-      title: "Naruto",
-      image: "/determined-ninja.png",
-      type: "TV",
-      releaseDate: "2002",
-    },
-  ]
-}
-
-// Get a single fallback anime detail
-function getFallbackAnimeDetail(id: string): AnimeResult {
-  const fallbackData = getFallbackAnimeData()
-  const anime = fallbackData.find((anime) => anime.id === id) || fallbackData[0]
-
-  return {
-    ...anime,
-    description:
-      "This is a fallback description for when the API is unavailable. The actual anime description would provide information about the plot, characters, and setting of the anime.",
-    genres: ["Action", "Adventure", "Fantasy"],
-    status: "Completed",
-    totalEpisodes: 24,
-    episodes: Array.from({ length: 24 }, (_, i) => ({
-      id: `${id}-episode-${i + 1}`,
-      number: i + 1,
-      title: `Episode ${i + 1}`,
-    })),
-    recommendations: fallbackData.filter((a) => a.id !== id).slice(0, 6),
-  }
-}
-
-// Get popular anime
 export async function getPopularAnime(): Promise<AnimeResult[]> {
+  // Construct the full URL with the correct path
+  const url = `${API_BASE_URL}/${PROVIDER_PATH}/popular`
+  console.log(`Attempting to fetch popular anime from: ${url}`)
+
   try {
-    // For demo purposes, we'll search for popular titles
-    const popularQueries = [
-      "one piece",
-      "naruto",
-      "attack on titan",
-      "demon slayer",
-      "jujutsu kaisen",
-      "my hero academia",
-      "tokyo revengers",
-      "chainsaw man",
-      "spy x family",
-      "bleach",
-      "dragon ball",
-      "hunter x hunter",
-      "death note",
-      "fullmetal alchemist",
-      "one punch man",
-    ]
-    const results: AnimeResult[] = []
+    const data = await safeFetch(url, { results: MOCK_POPULAR_ANIME })
 
-    // Get first result from each popular query
-    for (const query of popularQueries) {
-      try {
-        const response = await fetch(`${API_BASE_URL}${API_PATH}/${encodeURIComponent(query)}`)
-        if (response.ok) {
-          const data = await response.json()
-          if (data.results && data.results.length > 0) {
-            results.push({
-              id: data.results[0].id,
-              title: data.results[0].title,
-              image: data.results[0].image || "/placeholder.svg?height=300&width=200&query=" + query,
-              releaseDate: data.results[0].releaseDate,
-              type: data.results[0].type,
-            })
-          }
-        }
-      } catch (err) {
-        console.error(`Error searching for ${query}:`, err)
-        // Continue to the next query
-      }
-    }
-
-    // If we got at least some results, return them
-    if (results.length > 0) {
-      return results
-    }
-
-    // Otherwise, return fallback data
-    return getFallbackAnimeData()
+    // Return the results array from the response or fallback to mock data
+    return data.results || MOCK_POPULAR_ANIME
   } catch (error) {
-    console.error("Error getting popular anime:", error)
-    return getFallbackAnimeData()
+    console.error("Error in getPopularAnime:", error)
+    return MOCK_POPULAR_ANIME
   }
 }
 
-// Get related anime based on genre
-export async function getRelatedAnime(genres: string[]): Promise<AnimeResult[]> {
-  if (!genres || genres.length === 0) {
-    return getFallbackAnimeData().slice(0, 6)
-  }
+export async function getRecentEpisodes(): Promise<AnimeResult[]> {
+  // Construct the full URL with the correct path
+  const url = `${API_BASE_URL}/${PROVIDER_PATH}/recent-episodes`
+  console.log(`Attempting to fetch recent episodes from: ${url}`)
 
   try {
-    // Use the first genre to find related anime
-    const genre = genres[0]
-    const response = await fetch(`${API_BASE_URL}${API_PATH}/${encodeURIComponent(genre)}`)
+    const data = await safeFetch(url, {
+      results: MOCK_POPULAR_ANIME.slice(0, 4).map((anime) => ({
+        ...anime,
+        episodeNumber: Math.floor(Math.random() * 12) + 1,
+        episodeId: `${anime.id}-episode-${Math.floor(Math.random() * 12) + 1}`,
+      })),
+    })
 
-    if (!response.ok) {
-      return getFallbackAnimeData().slice(0, 6)
-    }
-
-    const data = await response.json()
-    if (!data.results || !Array.isArray(data.results)) {
-      return getFallbackAnimeData().slice(0, 6)
-    }
-
-    return data.results.slice(0, 6).map((item: any) => ({
-      id: item.id,
-      title: item.title,
-      image: item.image || "/vibrant-cityscape.png",
-      releaseDate: item.releaseDate,
-      type: item.type,
-    }))
+    return data.results || MOCK_POPULAR_ANIME.slice(0, 4)
   } catch (error) {
-    console.error("Error getting related anime:", error)
-    return getFallbackAnimeData().slice(0, 6)
+    console.error("Error in getRecentEpisodes:", error)
+    return MOCK_POPULAR_ANIME.slice(0, 4)
+  }
+}
+
+export async function searchAnime(query: string): Promise<AnimeResult[]> {
+  if (!query) return []
+
+  // Construct the full URL with the correct path
+  const url = `${API_BASE_URL}/${PROVIDER_PATH}/${encodeURIComponent(query)}`
+  console.log(`Searching anime with query: ${url}`)
+
+  try {
+    const data = await safeFetch(url, {
+      results: MOCK_POPULAR_ANIME.filter((anime) => anime.title.toLowerCase().includes(query.toLowerCase())),
+    })
+
+    return data.results || MOCK_POPULAR_ANIME.filter((anime) => anime.title.toLowerCase().includes(query.toLowerCase()))
+  } catch (error) {
+    console.error("Error in searchAnime:", error)
+    return MOCK_POPULAR_ANIME.filter((anime) => anime.title.toLowerCase().includes(query.toLowerCase()))
+  }
+}
+
+export async function getAnimeInfo(id: string): Promise<AnimeResult | null> {
+  if (!id) return null
+
+  // Construct the full URL with the correct path
+  const url = `${API_BASE_URL}/${PROVIDER_PATH}/info/${encodeURIComponent(id)}`
+  console.log(`Fetching anime info for ID: ${url}`)
+
+  try {
+    // Find the anime in our mock data as a fallback
+    const mockAnime = MOCK_POPULAR_ANIME.find((anime) => anime.id === id)
+    const mockAnimeInfo = mockAnime
+      ? {
+          ...mockAnime,
+          description: "This is a mock description for the anime. The API is running locally.",
+          status: "Ongoing",
+          totalEpisodes: 24,
+          genres: ["Action", "Adventure", "Fantasy"],
+          episodes: Array.from({ length: 12 }, (_, i) => ({
+            id: `${id}-episode-${i + 1}`,
+            number: i + 1,
+            title: `Episode ${i + 1}`,
+          })),
+          recommendations: MOCK_POPULAR_ANIME.filter((anime) => anime.id !== id).slice(0, 5),
+        }
+      : null
+
+    const data = await safeFetch(url, mockAnimeInfo)
+    return data
+  } catch (error) {
+    console.error("Error in getAnimeInfo:", error)
+
+    // Return mock data as fallback
+    const mockAnime = MOCK_POPULAR_ANIME.find((anime) => anime.id === id)
+    if (!mockAnime) return null
+
+    return {
+      ...mockAnime,
+      description: "This is a mock description for the anime. The API is running locally.",
+      status: "Ongoing",
+      totalEpisodes: 24,
+      genres: ["Action", "Adventure", "Fantasy"],
+      episodes: Array.from({ length: 12 }, (_, i) => ({
+        id: `${id}-episode-${i + 1}`,
+        number: i + 1,
+        title: `Episode ${i + 1}`,
+      })),
+      recommendations: MOCK_POPULAR_ANIME.filter((anime) => anime.id !== id).slice(0, 5),
+    }
+  }
+}
+
+export async function getRelatedAnime(genres: string[]): Promise<AnimeResult[]> {
+  console.log("Fetching related anime based on genres:", genres)
+
+  // Construct the full URL with the correct path
+  const url = `${API_BASE_URL}/${PROVIDER_PATH}/popular`
+
+  try {
+    // For related anime, we'll just use the popular endpoint for animepahe
+    const data = await safeFetch(url, { results: MOCK_POPULAR_ANIME })
+    return (data.results || MOCK_POPULAR_ANIME).slice(0, 4)
+  } catch (error) {
+    console.error("Error in getRelatedAnime:", error)
+    return MOCK_POPULAR_ANIME.slice(0, 4)
+  }
+}
+
+export async function getEpisodeSources(episodeId: string): Promise<AnimeSource | null> {
+  if (!episodeId) return null
+
+  // Construct the full URL with the correct path
+  const url = `${API_BASE_URL}/${PROVIDER_PATH}/watch?episodeId=${encodeURIComponent(episodeId)}`
+  console.log(`Fetching sources for episode: ${url}`)
+
+  try {
+    // Default fallback sources
+    const fallbackSources = {
+      headers: {
+        Referer: "https://kwik.cx/",
+      },
+      sources: [
+        {
+          url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", // Public test HLS stream
+          isM3U8: true,
+          quality: "720p",
+          isDub: false,
+        },
+        {
+          url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+          isM3U8: true,
+          quality: "480p",
+          isDub: false,
+        },
+      ],
+      download: `https://example.com/download/${episodeId}`,
+    }
+
+    const data = await safeFetch(url, fallbackSources)
+    return data
+  } catch (error) {
+    console.error("Error in getEpisodeSources:", error)
+
+    // Return fallback sources
+    return {
+      headers: {
+        Referer: "https://kwik.cx/",
+      },
+      sources: [
+        {
+          url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", // Public test HLS stream
+          isM3U8: true,
+          quality: "720p",
+          isDub: false,
+        },
+        {
+          url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+          isM3U8: true,
+          quality: "480p",
+          isDub: false,
+        },
+      ],
+      download: `https://example.com/download/${episodeId}`,
+    }
   }
 }

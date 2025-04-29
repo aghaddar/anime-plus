@@ -54,16 +54,12 @@ export default function WatchPage({ params }: WatchPageProps) {
     fetchData()
   }, [params.animeId, params.episodeId])
 
-  // Find the best quality source
-  const videoSource =
-    sources?.sources?.find((s) => s.quality === "1080p" || s.quality === "720p")?.url || sources?.sources?.[0]?.url
-
   // Find next and previous episodes
   const currentIndex = animeInfo?.episodes?.findIndex((ep) => ep.id === params.episodeId) ?? -1
-  const prevEpisode = currentIndex > 0 ? animeInfo?.episodes?.[currentIndex - 1] : null
+  const prevEpisode = currentIndex > 0 ? animeInfo?.episodes?.[currentIndex - 1] ?? null : null
   const nextEpisode =
     currentIndex >= 0 && currentIndex < (animeInfo?.episodes?.length || 0) - 1
-      ? animeInfo?.episodes?.[currentIndex + 1]
+      ? animeInfo?.episodes?.[currentIndex + 1] ?? null
       : null
 
   return (
@@ -82,7 +78,7 @@ export default function WatchPage({ params }: WatchPageProps) {
           {/* Main content - Video and Info */}
           <div className="lg:col-span-2">
             {/* Video Player */}
-            <VideoPlayer videoSource={videoSource} poster={animeInfo?.image} loading={loading} error={error} />
+            <VideoPlayer videoSources={sources?.sources} poster={animeInfo?.image} loading={loading} error={error} />
 
             {/* Anime Info with Action Buttons */}
             <AnimeInfo
@@ -92,7 +88,7 @@ export default function WatchPage({ params }: WatchPageProps) {
               description={animeInfo?.description || ""}
               type={animeInfo?.type}
               status={animeInfo?.status}
-              releaseDate={animeInfo?.releaseDate}
+              releaseDate={animeInfo?.releaseDate?.toString()}
               totalEpisodes={animeInfo?.totalEpisodes}
               prevEpisode={prevEpisode}
               nextEpisode={nextEpisode}

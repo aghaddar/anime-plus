@@ -12,7 +12,6 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "AnimePlus - Anime Streaming Platform",
   description: "Watch your favorite anime shows and movies",
-    generator: 'v0.dev'
 }
 
 export default function RootLayout({
