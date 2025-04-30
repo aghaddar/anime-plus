@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Search, Menu, X, Bell, User } from "lucide-react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import UserProfileDropdown from "./UserProfileDropdown"
 import { useAuth } from "@/lib/auth-context"
 
@@ -16,6 +16,7 @@ const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const pathname = usePathname()
+  const router = useRouter()
   const { user, isAuthenticated, isLoading } = useAuth()
 
   // Handle scroll effect
@@ -39,8 +40,15 @@ const Navbar = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    // Implement search functionality
-    console.log("Searching for:", searchQuery)
+
+    // Only search if query is not empty
+    if (searchQuery.trim()) {
+      // Redirect to search page with query parameter
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+
+      // Clear the search input after search
+      setSearchQuery("")
+    }
   }
 
   const toggleMenu = () => {

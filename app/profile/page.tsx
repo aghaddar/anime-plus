@@ -2,23 +2,41 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { User, Mail, Key, Save } from "lucide-react"
+import { User, Mail, Save } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 export default function ProfilePage() {
-  // Mock user data - in a real app, this would come from a database
+  const { user } = useAuth()
+
+  // Use the actual user data from auth context
   const [userData, setUserData] = useState({
-    name: "Adam Ghaddar",
-    email: "adam.ghaddar@example.com",
+    name: "",
+    email: "",
     profileImage: "/zoro-profile.png",
   })
+
+  // Update userData when user data is available
+  useEffect(() => {
+    if (user) {
+      setUserData({
+        name: user.username || "",
+        email: user.email || "",
+        profileImage: user.avatarURL || "/zoro-profile.png",
+      })
+    }
+  }, [user])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     // In a real app, this would save the user data to a database
     alert("Profile updated successfully!")
+  }
+
+  const handleResetPassword = () => {
+    alert("A mail to reset your password has been sent to your email")
   }
 
   return (
@@ -30,7 +48,7 @@ export default function ProfilePage() {
           <div className="flex flex-col items-center">
             <div className="w-32 h-32 rounded-full overflow-hidden mb-4">
               <Image
-                src={userData.profileImage || "/placeholder.svg?height=128&width=128&query=anime profile"}
+                src={userData.profileImage || "/placeholder.svg"}
                 alt={userData.name}
                 width={128}
                 height={128}
@@ -73,27 +91,18 @@ export default function ProfilePage() {
                   type="email"
                   id="email"
                   value={userData.email}
-                  onChange={(e) => setUserData({ ...userData, email: e.target.value })}
-                  className="bg-gray-800 text-white pl-10 pr-4 py-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  readOnly
+                  className="bg-gray-700 text-white pl-10 pr-4 py-2 rounded-md w-full focus:outline-none cursor-not-allowed opacity-80"
                 />
               </div>
+              <p className="text-xs text-gray-500 mt-1">Email address cannot be changed</p>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-400 mb-1">
-                Change Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Key size={16} className="text-gray-500" />
-                </div>
-                <input
-                  type="password"
-                  id="password"
-                  placeholder="Enter new password"
-                  className="bg-gray-800 text-white pl-10 pr-4 py-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Change Password</label>
+              <Button type="button" variant="outline" onClick={handleResetPassword} className="w-full">
+                Send Password Reset Email
+              </Button>
             </div>
 
             <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white mt-4">

@@ -39,6 +39,12 @@ const EpisodePagination = ({
     }
   }
 
+  // Handle episode click with proper navigation
+  const handleEpisodeClick = (episodeId: string) => {
+    console.log(`Clicked on episode: ${episodeId}`)
+    onEpisodeClick(episodeId)
+  }
+
   return (
     <div>
       {/* Page navigation */}
@@ -79,7 +85,7 @@ const EpisodePagination = ({
         {currentEpisodes.map((episode) => (
           <button
             key={episode.id}
-            onClick={() => onEpisodeClick(episode.id)}
+            onClick={() => handleEpisodeClick(episode.id)}
             className={`p-2 text-xs rounded-md text-center ${
               episode.id === currentEpisodeId ? "bg-purple-600" : "bg-gray-800 hover:bg-gray-700"
             }`}

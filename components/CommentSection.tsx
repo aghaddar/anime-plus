@@ -21,11 +21,19 @@ const CommentSection = ({ episodeId }: CommentSectionProps) => {
   const { token, isAuthenticated } = useAuth()
 
   useEffect(() => {
+    if (!episodeId) {
+      console.error("No episode ID provided to CommentSection")
+      setIsLoading(false)
+      return
+    }
+
     const fetchComments = async () => {
       setIsLoading(true)
       setError(null)
 
       try {
+        console.log(`Fetching comments for episode: ${episodeId}`)
+
         // Always use mock data for now until API is properly set up
         const mockComments = getCommentsForEpisode(episodeId)
         setComments(mockComments)

@@ -1,59 +1,32 @@
 "use client"
 
-import type React from "react"
-
-import { useEffect, useState } from "react"
-import { use } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Play, Plus, Check, Clock, Calendar, Star, Info, Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { getAnimeInfo, getRelatedAnime, type AnimeResult } from "@/lib/api"
+import type { AnimeResult } from "@/lib/api"
 import AnimeList from "@/components/AnimeList"
 import EpisodePagination from "@/components/EpisodePagination"
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from "@/lib/watchlist"
 
-interface AnimePageProps {
-  params: Promise<{ id: string }>
+interface AnimePageClientProps {
+  animeInfo: AnimeResult | null
+  relatedAnime: AnimeResult[]
 }
 
-export default function AnimePage({ params }: AnimePageProps) {
-  // Unwrap the params Promise
-  const resolvedParams = use(params)
-  const { id } = resolvedParams
-
-  const [animeInfo, setAnimeInfo] = useState<AnimeResult | null>(null)
-  const [relatedAnime, setRelatedAnime] = useState<AnimeResult[]>([])
-  const [loading, setLoading] = useState(true)
+export default function AnimePageClient({ animeInfo, relatedAnime }: AnimePageClientProps) {
   const [inWatchlist, setInWatchlist] = useState(false)
+  const [imageError, setImageError] = useState(false)
 
   useEffect(() => {
-    async function fetchData() {
-      setLoading(true)
-
-      try {
-        console.log(`Fetching anime info for: ${id}`)
-        const info = await getAnimeInfo(id)
-        console.log("Received anime info:", info)
-        setAnimeInfo(info)
-
-        // Check if anime is in watchlist
-        if (info) {
-          setInWatchlist(isInWatchlist(info.id))
-        }
-
-        // Get related anime
-        const related = info?.recommendations || (await getRelatedAnime(info?.genres || []))
-        setRelatedAnime(related)
-      } catch (error) {
-        console.error("Error fetching anime data:", error)
-      } finally {
-        setLoading(false)
-      }
+    // Check if anime is in watchlist
+    if (animeInfo) {
+      setInWatchlist(isInWatchlist(animeInfo.id))
     }
-
-    fetchData()
-  }, [id])
+    // Reset image error state when animeInfo changes
+    setImageError(false)
+  }, [animeInfo])
 
   const toggleWatchlist = () => {
     if (!animeInfo) return
@@ -68,7 +41,7 @@ export default function AnimePage({ params }: AnimePageProps) {
   }
 
   const shareAnime = () => {
-    if (navigator.share) {
+    if (typeof navigator !== "undefined" && "share" in navigator && typeof navigator.share === "function") {
       navigator
         .share({
           title: animeInfo?.title || "Check out this anime",
@@ -83,21 +56,20 @@ export default function AnimePage({ params }: AnimePageProps) {
     }
   }
 
-  // Simple function to handle image errors
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    const target = e.target as HTMLImageElement
-    target.onerror = null // Prevent infinite loop
-    target.src = `/placeholder.svg?height=500&width=1000&query=${encodeURIComponent(animeInfo?.title || id)}`
-  }
+  // Function to get the appropriate image URL
+  const getImageUrl = (imageUrl: string | undefined) => {
+    if (!imageUrl || imageError) {
+      return `/placeholder.svg?height=300&width=200&query=${encodeURIComponent(animeInfo?.title || "anime")}`
+    }
 
-  if (loading) {
-    return (
-      <div className="container mx-auto px-6 py-12 text-center">
-        <div className="h-60 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-        </div>
-      </div>
-    )
+    // Check if the image URL is external (starts with http or https)
+    if (imageUrl.startsWith("http")) {
+      // Use the proxy for external images to avoid CORS issues
+      return `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`
+    }
+
+    // For local images (from public directory)
+    return imageUrl
   }
 
   if (!animeInfo) {
@@ -112,9 +84,8 @@ export default function AnimePage({ params }: AnimePageProps) {
     )
   }
 
-  // Use the image directly from the API
-  const imageUrl =
-    animeInfo.image || `/placeholder.svg?height=500&width=1000&query=${encodeURIComponent(animeInfo.title)}`
+  const coverImage = getImageUrl(animeInfo.image)
+  const backdropImage = getImageUrl(animeInfo.image)
 
   return (
     <div className="bg-black text-white">
@@ -122,12 +93,12 @@ export default function AnimePage({ params }: AnimePageProps) {
       <div className="relative w-full h-[300px] sm:h-[400px] md:h-[500px] overflow-hidden">
         <div className="absolute inset-0 w-full h-full">
           <Image
-            src={imageUrl || "/placeholder.svg"}
+            src={backdropImage || "/placeholder.svg"}
             alt={animeInfo.title}
             fill
             className="object-cover"
             priority
-            onError={handleImageError}
+            onError={() => setImageError(true)}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
         </div>
@@ -137,11 +108,11 @@ export default function AnimePage({ params }: AnimePageProps) {
             {/* Anime Cover Image */}
             <div className="w-32 h-48 sm:w-40 sm:h-60 md:w-48 md:h-72 relative flex-shrink-0 rounded-md overflow-hidden shadow-lg">
               <Image
-                src={imageUrl || "/placeholder.svg"}
+                src={coverImage || "/placeholder.svg"}
                 alt={animeInfo.title}
                 fill
                 className="object-cover"
-                onError={handleImageError}
+                onError={() => setImageError(true)}
               />
             </div>
 
@@ -161,7 +132,7 @@ export default function AnimePage({ params }: AnimePageProps) {
                 {animeInfo.releaseDate && (
                   <div className="flex items-center mr-3 sm:mr-4">
                     <Calendar className="w-4 h-4 mr-1" />
-                    <span>{animeInfo.releaseDate}</span>
+                    <span>{animeInfo.releaseDate.toString()}</span>
                   </div>
                 )}
 

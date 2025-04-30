@@ -9,19 +9,29 @@ export async function GET(request: Request) {
       return new NextResponse("Image URL is required", { status: 400 })
     }
 
+    console.log(`Proxying image from: ${imageUrl}`)
+
     // Fetch the image
     const response = await fetch(imageUrl, {
       headers: {
-        // Add common headers that might help bypass restrictions
+        // Add headers specifically for animepahe
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        Accept: "image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
         Referer: "https://animepahe.ru/",
         Origin: "https://animepahe.ru",
       },
     })
 
     if (!response.ok) {
-      return new NextResponse("Failed to fetch image", { status: response.status })
+      console.error(`Failed to fetch image: ${response.status} ${response.statusText}`)
+      // Return a placeholder image instead
+      const placeholderUrl = new URL(request.url)
+      placeholderUrl.pathname = "/placeholder.svg"
+      placeholderUrl.search = "?height=300&width=200&query=Image+not+found"
+
+      return NextResponse.redirect(placeholderUrl)
     }
 
     // Get the image data
@@ -39,6 +49,12 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error("Error proxying image:", error)
-    return new NextResponse("Error proxying image", { status: 500 })
+
+    // Return a placeholder image on error
+    const placeholderUrl = new URL(request.url)
+    placeholderUrl.pathname = "/placeholder.svg"
+    placeholderUrl.search = "?height=300&width=200&query=Error+loading+image"
+
+    return NextResponse.redirect(placeholderUrl)
   }
 }

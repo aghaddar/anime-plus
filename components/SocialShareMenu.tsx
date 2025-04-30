@@ -56,7 +56,7 @@ const SocialShareMenu = ({ title, description, image, compact = false }: SocialS
   }
 
   // Use Web Share API directly if available and compact mode is not forced
-  if (navigator.share && !compact) {
+  if (typeof navigator !== "undefined" && "share" in navigator && !compact) {
     return (
       <Button
         className="bg-purple-600 hover:bg-purple-700 text-white text-xs sm:text-sm h-auto py-2"

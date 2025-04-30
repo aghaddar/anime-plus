@@ -207,11 +207,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (response.ok) {
           try {
             const data = JSON.parse(responseText)
-            
+
             // Check if the response contains a success message
             if (data.message && data.message.includes("success")) {
-              success = true;
-              
+              success = true
+
               // If we have user data but no token, create a temporary token
               if (data.user) {
                 userData = {
@@ -219,24 +219,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   username: data.user.username || credentials.username,
                   email: data.user.email || credentials.email,
                   avatarURL: data.user.avatarURL || "/zoro-profile.png",
-                };
-                
+                }
+
                 // Generate a temporary token if none is provided
                 if (!data.token) {
-                  authToken = `temp-token-${Date.now()}`;
-                  console.log("Created temporary token for successful registration");
+                  authToken = `temp-token-${Date.now()}`
+                  console.log("Created temporary token for successful registration")
                 } else {
-                  authToken = data.token;
+                  authToken = data.token
                 }
               }
             } else {
               // If there's no success message but we have user and token
               if (data.user) {
-                userData = data.user;
+                userData = data.user
               }
               if (data.token) {
-                authToken = data.token;
-                success = true;
+                authToken = data.token
+                success = true
               }
             }
           } catch (e) {

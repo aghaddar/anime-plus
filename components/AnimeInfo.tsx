@@ -74,6 +74,15 @@ const AnimeInfo = ({
     }
   }
 
+  // Helper function to create the correct URL for episodes that might contain slashes
+  const getEpisodeUrl = (episode: Episode | null) => {
+    if (!episode) return "#"
+
+    // Split the episodeId by slashes to create the correct route
+    const parts = episode.id.split("/")
+    return `/watch/${animeId}/${parts.join("/")}`
+  }
+
   return (
     <div className="mb-8">
       <h1 className="text-2xl font-bold mb-2">
@@ -120,7 +129,7 @@ const AnimeInfo = ({
         {/* Episode Navigation */}
         <div className="flex gap-2 sm:gap-3 mr-auto">
           <Link
-            href={prevEpisode ? `/watch/${animeId}/${prevEpisode.id}` : "#"}
+            href={getEpisodeUrl(prevEpisode)}
             className={`px-2 sm:px-4 py-2 rounded-md text-xs sm:text-sm ${
               prevEpisode ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-800 opacity-50 cursor-not-allowed"
             }`}
@@ -131,7 +140,7 @@ const AnimeInfo = ({
           </Link>
 
           <Link
-            href={nextEpisode ? `/watch/${animeId}/${nextEpisode.id}` : "#"}
+            href={getEpisodeUrl(nextEpisode)}
             className={`px-2 sm:px-4 py-2 rounded-md text-xs sm:text-sm ${
               nextEpisode ? "bg-purple-600 hover:bg-purple-700 text-white" : "bg-gray-800 opacity-50 cursor-not-allowed"
             }`}

@@ -23,6 +23,7 @@ const VideoPlayer = ({ videoSources, poster, loading, error }: VideoPlayerProps)
   const [selectedQuality, setSelectedQuality] = useState<string | null>(null)
   const [isDubbed, setIsDubbed] = useState<boolean>(false)
   const [showControls, setShowControls] = useState(false)
+  const [playerError, setPlayerError] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const hlsRef = useRef<Hls | null>(null)
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -56,13 +57,23 @@ const VideoPlayer = ({ videoSources, poster, loading, error }: VideoPlayerProps)
 
   // Setup HLS player when sources or quality changes
   useEffect(() => {
+    // Reset player error
+    setPlayerError(null)
+
     // Clean up previous HLS instance
     if (hlsRef.current) {
       hlsRef.current.destroy()
       hlsRef.current = null
     }
 
-    if (!videoSources || videoSources.length === 0 || !videoRef.current || !selectedQuality) return
+    if (!videoSources || videoSources.length === 0 || !videoRef.current || !selectedQuality) {
+      console.warn("Missing required data for video playback:", {
+        hasSources: !!videoSources && videoSources.length > 0,
+        hasVideoRef: !!videoRef.current,
+        selectedQuality,
+      })
+      return
+    }
 
     // Find the best source based on selected quality and language preference
     const source = videoSources.find(
@@ -70,9 +81,24 @@ const VideoPlayer = ({ videoSources, poster, loading, error }: VideoPlayerProps)
     )
 
     if (!source) {
-      console.error("No matching source found for selected quality and language")
+      console.error("No matching source found for selected quality and language", {
+        selectedQuality,
+        isDubbed,
+        availableSources: videoSources.map((s) => ({
+          quality: s.quality,
+          parsedQuality: parseQuality(s.quality),
+          isDub: s.isDub,
+        })),
+      })
+      setPlayerError("No matching source found for the selected quality and language")
       return
     }
+
+    console.log("Setting up video player with source:", {
+      url: source.url,
+      quality: source.quality,
+      isM3U8: source.isM3U8,
+    })
 
     if (source.isM3U8 && Hls.isSupported()) {
       const hls = new Hls({
@@ -81,27 +107,45 @@ const VideoPlayer = ({ videoSources, poster, loading, error }: VideoPlayerProps)
         },
       })
       hlsRef.current = hls
+
       hls.loadSource(source.url)
       hls.attachMedia(videoRef.current)
+
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log("HLS manifest parsed successfully")
         if (videoRef.current) {
-          videoRef.current.play().catch((e) => console.error("Autoplay prevented:", e))
+          videoRef.current.play().catch((e) => {
+            console.error("Autoplay prevented:", e)
+            setPlayerError("Autoplay prevented. Please click play to start the video.")
+          })
         }
       })
+
       hls.on(Hls.Events.ERROR, (event, data) => {
+        console.error("HLS error:", data)
         if (data.fatal) {
-          console.error("HLS error:", data)
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+            console.log("Fatal network error encountered, trying to recover")
             hls.startLoad()
           } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            console.log("Fatal media error encountered, trying to recover")
             hls.recoverMediaError()
+          } else {
+            setPlayerError(`Playback error: ${data.details}`)
           }
         }
       })
     } else if (videoRef.current.canPlayType("application/vnd.apple.mpegurl")) {
       // For Safari which has native HLS support
+      console.log("Using native HLS support for Safari")
       videoRef.current.src = source.url
-      videoRef.current.play().catch((e) => console.error("Autoplay prevented:", e))
+      videoRef.current.play().catch((e) => {
+        console.error("Autoplay prevented:", e)
+        setPlayerError("Autoplay prevented. Please click play to start the video.")
+      })
+    } else {
+      console.error("HLS is not supported in this browser and no fallback is available")
+      setPlayerError("Your browser doesn't support HLS streaming and no fallback is available")
     }
 
     return () => {
@@ -124,6 +168,9 @@ const VideoPlayer = ({ videoSources, poster, loading, error }: VideoPlayerProps)
     }, 3000)
   }
 
+  // Display either the passed error or the player error
+  const displayError = error || playerError
+
   return (
     <div
       className="relative w-full aspect-video bg-gray-900 mb-6 rounded-lg overflow-hidden"
@@ -134,10 +181,10 @@ const VideoPlayer = ({ videoSources, poster, loading, error }: VideoPlayerProps)
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
         </div>
-      ) : error ? (
+      ) : displayError ? (
         <div className="absolute inset-0 flex items-center justify-center text-center p-4">
           <div>
-            <p className="text-red-500 mb-2">{error}</p>
+            <p className="text-red-500 mb-2">{displayError}</p>
             <button
               onClick={() => window.location.reload()}
               className="px-4 py-2 bg-purple-600 rounded-md hover:bg-purple-700 text-white flex items-center"
@@ -156,6 +203,10 @@ const VideoPlayer = ({ videoSources, poster, loading, error }: VideoPlayerProps)
             controls
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
+            onError={(e) => {
+              console.error("Video element error:", e)
+              setPlayerError("Error playing video. Please try a different quality or refresh the page.")
+            }}
           >
             Your browser does not support the video tag.
           </video>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -14,30 +14,26 @@ interface AnimeCardProps {
 }
 
 const AnimeCard = ({ id, title, image, type, releaseDate, rating }: AnimeCardProps) => {
-  const [imageError, setImageError] = useState(false)
-  const [isExternalImage, setIsExternalImage] = useState(image?.startsWith("http"))
-
   // Convert releaseDate to string if it's a number
   const formattedReleaseDate = typeof releaseDate === "number" ? releaseDate.toString() : releaseDate
 
-  // Use a placeholder image if the image URL is invalid or if an error occurs
-  const imageUrl =
-    imageError || !image
-      ? `/placeholder.svg?height=300&width=200&query=${encodeURIComponent(title)}`
-      : isExternalImage
-        ? `/api/proxy-image?url=${encodeURIComponent(image)}`
-        : image
+  // Simple function to handle image errors
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const target = e.target as HTMLImageElement
+    target.onerror = null // Prevent infinite loop
+    target.src = `/placeholder.svg?height=300&width=200&query=${encodeURIComponent(title)}`
+  }
 
   return (
     <Link href={`/anime/${id}`} className="group">
       <div className="relative w-full aspect-[2/3] overflow-hidden rounded-md mb-2 bg-gray-800">
         <Image
-          src={imageUrl || "/placeholder.svg"}
+          src={image || `/placeholder.svg?height=300&width=200&query=${encodeURIComponent(title)}`}
           alt={title}
           fill
           sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, 160px"
           className="object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={() => setImageError(true)}
+          onError={handleImageError}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 

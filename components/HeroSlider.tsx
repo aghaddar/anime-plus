@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
@@ -23,16 +25,13 @@ interface HeroSliderProps {
 const HeroSlider = ({ featuredAnime }: HeroSliderProps) => {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [inWatchlist, setInWatchlist] = useState(false)
-  const [imageError, setImageError] = useState(false)
 
   const nextSlide = () => {
     setCurrentIndex((prevIndex) => (prevIndex === featuredAnime.length - 1 ? 0 : prevIndex + 1))
-    setImageError(false)
   }
 
   const prevSlide = () => {
     setCurrentIndex((prevIndex) => (prevIndex === 0 ? featuredAnime.length - 1 : prevIndex - 1))
-    setImageError(false)
   }
 
   useEffect(() => {
@@ -56,31 +55,39 @@ const HeroSlider = ({ featuredAnime }: HeroSliderProps) => {
       removeFromWatchlist(anime.id)
       setInWatchlist(false)
     } else {
-      addToWatchlist(anime)
+      // Ensure image is always a string when adding to watchlist
+      addToWatchlist({
+        ...anime,
+        image: anime.image || `/placeholder.svg?height=500&width=1000&query=${encodeURIComponent(anime.title)}`,
+      })
       setInWatchlist(true)
     }
+  }
+
+  // Simple function to handle image errors
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const target = e.target as HTMLImageElement
+    target.onerror = null // Prevent infinite loop
+    target.src = `/placeholder.svg?height=500&width=1000&query=${encodeURIComponent(featuredAnime[currentIndex].title)}`
   }
 
   if (!featuredAnime || featuredAnime.length === 0) return null
 
   const current = featuredAnime[currentIndex]
+  const imageUrl = current.image || `/placeholder.svg?height=500&width=1000&query=${encodeURIComponent(current.title)}`
 
   return (
     <div className="relative w-full h-[500px] overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 w-full h-full">
         <Image
-          src={
-            imageError
-              ? `/placeholder.svg?height=500&width=1000&query=${encodeURIComponent(current.title)}`
-              : current.image || `/placeholder.svg?height=500&width=1000&query=${encodeURIComponent(current.title)}`
-          }
+          src={imageUrl || "/placeholder.svg"}
           alt={current.title}
           fill
           sizes="100vw"
           className="object-cover"
           priority
-          onError={() => setImageError(true)}
+          onError={handleImageError}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
       </div>
